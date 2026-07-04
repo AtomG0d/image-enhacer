@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Enhancer ML</title>
+  </head>
+  <body>
+    <h1>Улучшение изображений (ML)</h1>
+    
+    <input type="file" id="file-input" accept="image/jpeg, image/png, image/heic, image/heif, image/bmp">
+    
+    <div id="status" style="margin: 20px 0; font-weight: bold; color: blue;">Ожидание файла...</div>
+    
+    <h3>Результат:</h3>
+    <img id="result-img" style="max-width: 100%; border: 1px solid #ccc;" />
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
