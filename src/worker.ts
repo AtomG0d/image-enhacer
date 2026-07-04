@@ -1,3 +1,5 @@
+// src/worker.ts
+
 import { WebGLRenderer } from './webglRenderer';
 import { ImageEnhancementModel } from './mlModel';
 
@@ -25,6 +27,7 @@ self.onmessage = async (e: MessageEvent<TaskMessage>) => {
 
   if (type === 'START' && image) {
     activeTasks.set(taskId, true);
+    const startTime = performance.now();
     
     try {
       console.log(`Worker [${taskId}]: Starting processing...`);
@@ -33,19 +36,20 @@ self.onmessage = async (e: MessageEvent<TaskMessage>) => {
       
       postMessage({ taskId, status: 'processing', progress: 10 });
 
+      // Создаём Blob
       const blob = new Blob([image], { type: mimeType || 'image/jpeg' });
       console.log(`Worker [${taskId}]: Created blob, size:`, blob.size);
       
       if (!activeTasks.get(taskId)) return;
       postMessage({ taskId, status: 'processing', progress: 20 });
 
+      // Декодируем
       let bitmap: ImageBitmap;
       try {
         bitmap = await createImageBitmap(blob);
         console.log(`Worker [${taskId}]: Decoded bitmap ${bitmap.width}x${bitmap.height}`);
       } catch (decodeError: any) {
         console.error(`Worker [${taskId}]: Decode error:`, decodeError);
-        console.error(`Worker [${taskId}]: MIME type was:`, mimeType);
         throw new Error(`Failed to decode image: ${decodeError.message}. Try using JPEG or PNG format.`);
       }
       
@@ -55,6 +59,7 @@ self.onmessage = async (e: MessageEvent<TaskMessage>) => {
       }
       postMessage({ taskId, status: 'processing', progress: 30 });
 
+      // ML модель
       const model = await getMLModel();
       
       if (!activeTasks.get(taskId)) {
@@ -72,6 +77,7 @@ self.onmessage = async (e: MessageEvent<TaskMessage>) => {
       }
       postMessage({ taskId, status: 'processing', progress: 50 });
 
+      // WebGL рендеринг
       const renderer = new WebGLRenderer(bitmap.width, bitmap.height);
       const resultBlob = await renderer.render(bitmap, params);
       console.log(`Worker [${taskId}]: Rendering complete, blob size:`, resultBlob.size);
@@ -83,11 +89,14 @@ self.onmessage = async (e: MessageEvent<TaskMessage>) => {
 
       postMessage({ type: 'COMPLETE', taskId, result: resultBlob });
       activeTasks.delete(taskId);
-      console.log(`Worker [${taskId}]: Task completed`);
+      
+      // ТАЙМЕР: считаем время
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+      console.log(`Worker [${taskId}]: Task completed in ${duration} seconds`);
 
     } catch (error: any) {
       console.error(`Worker [${taskId}] error:`, error);
-      console.error(`Worker [${taskId}] error stack:`, error.stack);
       postMessage({ type: 'ERROR', taskId, error: error.message });
       activeTasks.delete(taskId);
     }
